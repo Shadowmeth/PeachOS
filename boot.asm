@@ -32,6 +32,8 @@ step2:
     mov ch, 0 ; cylinder low eight bits
     mov cl, 2 ; read sector number two
     mov dh, 0 ; head number
+    xor bx, bx ; zero out bx reg
+    inc bx ; set bx to 1
     mov bx, buffer
     int 0x13
     jc error
