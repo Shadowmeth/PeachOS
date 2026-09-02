@@ -1,5 +1,5 @@
-#include "terminal.h"
-#include "string.h"
+#include "include/terminal.h"
+#include "include/string.h"
 
 static uint16_t *video_mem = (uint16_t *)0xb8000;
 

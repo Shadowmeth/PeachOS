@@ -1,5 +1,5 @@
-#include "kernel.h"
-#include "terminal.h"
+#include "include/kernel.h"
+#include "include/terminal.h"
 
 void kernel_main()
 {
