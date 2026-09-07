@@ -19,5 +19,9 @@ struct idt_table {
 void idt_init(void);
 void idt_set_descriptor(uint8_t vector, void *isr);
 extern void idt_load(struct idt_table *ptr);
+extern void int21h(void);
+extern void no_interrupt(void);
+extern void enable_interrupts(void);
+extern void disable_interrupts(void);
 
 #endif
