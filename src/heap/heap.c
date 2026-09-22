@@ -1,12 +1,10 @@
 #include "include/heap.h"
 
-#define MIN_BLOCK_SIZE (sizeof(struct heap_block))
-
 static const void *heap_start = NULL;
-struct heap_block *start_block = NULL;
+static struct heap_block *start_block = NULL;
 
-struct list_head all_blocks;
-struct list_head free_blocks;
+static struct list_head all_blocks;
+static struct list_head free_blocks;
 
 /* Useful for debugging. */
 size_t heap_blocks_count = 0;
@@ -19,6 +17,9 @@ static void mark_block_free(struct heap_block *heap_block);
 static void mark_block_used(struct heap_block *heap_block);
 static struct heap_block *grow_heap(const size_t needed);
 static void split_block(struct heap_block *block, const size_t needed);
+static struct heap_block *next_block(struct heap_block *block);
+static struct heap_block *prev_block(struct heap_block *block);
+static void merge_blocks(struct heap_block *keep, struct heap_block *gone);
 
 /* Mark the given block as freed. */
 static void mark_block_free(struct heap_block *heap_block)
@@ -104,6 +105,7 @@ static void split_block(struct heap_block *block, const size_t needed)
 
     block->size = needed;
     heap_blocks_count++;
+    heap_allocated_memory += block->size;
 }
 
 /* Grow the heap if no block on free_list was big enough to
@@ -166,6 +168,77 @@ void *kmalloc(size_t size)
     return (void *)((char *)first_fit_block + sizeof(struct heap_block));
 }
 
+static struct heap_block *next_block(struct heap_block *block)
+{
+    if (block->all.next == &all_blocks)
+    {
+        return NULL;
+    }
+
+    return list_entry(block->all.next, struct heap_block, all);
+}
+
+static struct heap_block *prev_block(struct heap_block *block)
+{
+    if (block->all.prev == &all_blocks)
+    {
+        return NULL;
+    }
+
+    return list_entry(block->all.prev, struct heap_block, all);
+}
+
+/* Keep must sit right before gone in memory, and both must be free.
+ * gone disappears into keep.
+ */
+static void merge_blocks(struct heap_block *keep, struct heap_block *gone)
+{
+    keep->size += sizeof(struct heap_block) + gone->size;
+
+    list_del(&gone->all);
+    list_del(&gone->free_list);
+
+    gone->magic = 0;
+    
+    heap_blocks_count--;
+}
+
 void kfree(void *ptr)
 {
+    if (!ptr)
+    {
+        return;
+    }
+
+    struct heap_block *block = (struct heap_block *)((char *)ptr - sizeof(struct heap_block));
+
+    if (block->magic != 0xDEADBEEF)
+    {
+        /* Wrong pointer or header got corrupted. */
+        /* Make a panic handler and call it here. */
+        return;
+    }
+
+    if (block->free)
+    {
+        /* Can't free an already freed block. */
+        /* No need to panic but inform user that double free was performed. */
+        return;
+    }
+
+    mark_block_free(block);
+    list_add(&block->free_list, &free_blocks);
+
+    /* Merge right first. Merging left after right would change blocks position. */
+    struct heap_block *right = next_block(block);
+    if (right && right->free)
+    {
+        merge_blocks(block, right);
+    }
+
+    struct heap_block *left = prev_block(block);
+    if (left && left->free)
+    {
+        merge_blocks(left, block);
+    }
 }

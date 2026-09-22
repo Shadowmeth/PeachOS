@@ -8,6 +8,9 @@
 
 #define HEAP_ALIGNMENT 8
 
+extern size_t heap_allocated_memory;
+extern size_t heap_blocks_count;
+
 struct heap_block
 {
     size_t size;
